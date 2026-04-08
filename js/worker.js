@@ -12,7 +12,7 @@ const MODELS = {
   transcription: {
     basic: 'Xenova/whisper-tiny',
     medium: 'Xenova/whisper-base',
-    heavy: 'Xenova/whisper-small'
+    heavy: 'onnx-community/whisper-large-v3-turbo'
   },
   chat: {
     basic: 'Xenova/LaMini-Flan-T5-248M',

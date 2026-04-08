@@ -57,7 +57,7 @@ export async function seedHelpNote() {
       { speaker: 'IA', text: '2. SIGILO: Pulsa las 🕶️ para poner la pantalla negra mientras grabas. Doble clic para volver.' },
       { speaker: 'IA', text: '3. INTERÉS: Pulsa el 📌 para marcar momentos clave. La IA les dará prioridad en el resumen.' },
       { speaker: 'IA', text: '4. CHAT: Pulsa el 💬 para preguntar dudas sobre lo que se ha hablado (ej: "¿Qué tareas se asignaron?").' },
-      { speaker: 'IA', text: '5. NIVELES: Elige Básico (rápido), Medio o Heavy (IA máxima, descarga ~1GB) según tu móvil.' },
+      {speaker: 'IA', text: '5. NIVELES: Elige Básico, Medio o Heavy (Capa Profesional: Whisper Large V3 Turbo).'},
       { speaker: 'IA', text: '6. EXPORTAR: Usa los tres puntos ⋮ arriba a la derecha para generar un PDF profesional.' }
     ];
     
