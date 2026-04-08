@@ -19,9 +19,10 @@ function sendStatus(status, data = {}) {
 async function initTranscriber() {
     if (transcriber) return transcriber;
     
-    sendStatus('init', { name: 'Modelo de Transcripción (Whisper Tiny)' });
+    sendStatus('init', { name: 'Modelo de Transcripción (Whisper Base)' });
     
-    transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny', {
+    // Cambiamos a whisper-base que alucina menos en español, y forzamos float32 para la inferencia webgpu
+    transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-base', {
         progress_callback: (info) => {
             if (info.status === 'progress') {
                 sendStatus('progress', { loaded: info.loaded, total: info.total });
@@ -72,7 +73,13 @@ self.onmessage = async (event) => {
                 stride_length_s: 5,
                 return_timestamps: true,
                 language: 'spanish',
-                task: 'transcribe'
+                task: 'transcribe',
+                // Prevenir bucles de repetición y alucinaciones por silencios
+                no_repeat_ngram_size: 2,
+                temperature: [0, 0.5, 0.9],
+                chunk_callback: (chunk) => {
+                  // Opcionalmente podemos enviar cada chunk progresivamente
+                }
             });
             
             // Result contiene 'chunks' si return_timestamps es true
