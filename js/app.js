@@ -24,9 +24,9 @@ function initAudioContext() {
   }
 }
 
-// Iniciar Web Worker
+// Iniciar Web Worker con Buster para forzar actualización
 function initWorker() {
-  worker = new Worker('js/worker.js', { type: 'module' });
+  worker = new Worker('js/worker.js?v=3.2', { type: 'module' });
   
   worker.onmessage = (event) => {
     const data = event.data;

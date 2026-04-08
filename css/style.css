@@ -67,6 +67,12 @@ body {
   -webkit-text-fill-color: transparent;
 }
 
+.header-badges {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .badge {
   font-size: 0.75rem;
   font-weight: 500;
@@ -75,6 +81,16 @@ body {
   padding: 0.25rem 0.5rem;
   border-radius: 9999px;
   border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.badge-version {
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  padding: 0.2rem 0.4rem;
+  border-radius: 6px;
+  border: 1px solid var(--glass-border);
 }
 
 /* Main Content */
