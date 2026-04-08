@@ -117,6 +117,7 @@ function initWorker() {
         };
         await saveChunk(chunkData);
         addChunkToUI(chunkData);
+        if (isRecording) editorStatus.textContent = 'Grabando...';
         break;
       case 'chat_response':
         addChatMessage('ia', data.text);
@@ -157,6 +158,8 @@ async function startRecording() {
         audio: audioData,
         modelTier: modelSelect.value 
       });
+      // Mostrar feedback de procesamiento
+      editorStatus.textContent = 'Procesando...';
       // Guardar audio backup
       await saveAudio(currentSessionId, audioBlob);
     }

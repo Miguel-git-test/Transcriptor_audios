@@ -31,7 +31,7 @@ async function getTranscriber(tier = 'medium') {
   currentTier = tier;
   const modelId = MODELS.transcription[tier] || MODELS.transcription.medium;
   
-  sendStatus('init', { name: `Whisper ${tier.toUpperCase()}` });
+  sendStatus('init', { name: `Motor de texto (${tier.toUpperCase()})` });
   
   transcriber = await pipeline('automatic-speech-recognition', modelId, {
     progress_callback: (info) => { 
@@ -47,7 +47,7 @@ async function getChatbot(tier = 'medium') {
   
   const modelId = MODELS.chat[tier] || MODELS.chat.medium;
   
-  sendStatus('init', { name: `Chat IA ${tier.toUpperCase()}` });
+  sendStatus('init', { name: `Análisis de datos (${tier.toUpperCase()})` });
   
   chatbot = await pipeline('text-generation', modelId, {
     progress_callback: (info) => { 
