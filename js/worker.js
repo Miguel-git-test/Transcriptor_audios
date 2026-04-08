@@ -69,47 +69,52 @@ self.onmessage = async (event) => {
             
             // Ejecutar Whisper
             const result = await transcriber(audioData, {
-                chunk_length_s: 30, // procesar en bloques de 30s
+                chunk_length_s: 29, // Cambiado de 30 a 29 para evitar problemas de timestamps
                 stride_length_s: 5,
                 return_timestamps: true,
                 language: 'spanish',
                 task: 'transcribe',
-                // Prevenir bucles de repetición y alucinaciones por silencios
                 no_repeat_ngram_size: 2,
                 temperature: [0, 0.5, 0.9],
-                chunk_callback: (chunk) => {
-                  // Opcionalmente podemos enviar cada chunk progresivamente
-                }
             });
             
-            // Result contiene 'chunks' si return_timestamps es true
-            // [{ timestamp: [0.0, 5.0], text: "hola a todos" }]
+            let rawChunks = result.chunks || [{ text: result.text, timestamp: [0, audioData.length / 16000] }];
             
-            let chunks = result.chunks || [{ text: result.text, timestamp: [0, audioData.length / 16000] }];
+            // FILTRADO DE DUPLICADOS Y SOLAPAMIENTOS
+            // Whisper a veces devuelve fragmentos que se pisan entre sí. 
+            // Filtramos para quedarnos solo con los que avanzan en el tiempo.
+            let chunks = [];
+            let lastEndTime = -1;
             
-            // Simulación de Diarización (Identificación de locutor)
-            // Ya que correr Pyannote completo sobre JS v3 requiere cálculos tensoriales personalizados muy pesados (X-Vectors),
-            // implementamos una heurística basada en las pausas (timestamps) para simular cambios de turno.
-            // Si hay un silencio > 1.5s entre chunks, asumimos cambio de orador de manera alterna para el prototipo offline.
+            for (const chunk of rawChunks) {
+                const [start, end] = chunk.timestamp;
+                // Si el fragmento empieza significativamente después del anterior o es el primero
+                if (start >= lastEndTime - 0.5) { 
+                    chunks.push(chunk);
+                    lastEndTime = end;
+                }
+            }
+            
+            // Proceder con la diarización sobre los chunks filtrados
             let currentSpeaker = "SPEAKER_00";
             
             for (let i = 0; i < chunks.length; i++) {
                 const chunk = chunks[i];
+                const text = chunk.text.trim();
                 
-                // Heurística simple de cambio de turno: Si la brecha con el anterior es grande, puede ser otro locutor
+                if (!text) continue; // Ignorar fragmentos vacíos
+                
                 if (i > 0) {
                     const prevChunk = chunks[i-1];
                     const gap = chunk.timestamp[0] - prevChunk.timestamp[1];
-                    // Si hubo una pausa larga (> 1 segundo)
-                    if (gap > 1.0) {
+                    if (gap > 1.2) { // Un segundo de silencio suele indicar cambio de turno
                         currentSpeaker = currentSpeaker === "SPEAKER_00" ? "SPEAKER_01" : "SPEAKER_00";
                     }
                 }
                 
-                // Enviar fragmento a la interfaz
                 sendStatus('chunk', {
                     chunk: {
-                        text: chunk.text.trim(),
+                        text: text,
                         timestamp: chunk.timestamp,
                         speaker: currentSpeaker
                     }
@@ -125,23 +130,25 @@ self.onmessage = async (event) => {
     
     if (data.type === 'summarize') {
         try {
-            // Asegurar que el resumidor está cargado
-            await initSummarizer();
+            // Cambiamos a Bart para mayor compatibilidad de archivos ONNX en navegadores
+            if (!summarizer) {
+                summarizer = await pipeline('summarization', 'Xenova/distill-bart-cnn-12-6', {
+                    progress_callback: (info) => {
+                        if (info.status === 'progress') {
+                            sendStatus('progress', { loaded: info.loaded, total: info.total });
+                        }
+                    }
+                });
+            }
             
-            sendStatus('summary_progress', { text: "Analizando contenido (esto puede tardar unos minutos en el móvil)..." });
+            sendStatus('summary_progress', { text: "Resumiendo transcripción..." });
             
-            const conversation = data.text;
-            const prompt = `<|im_start|>system\nEres un asistente de IA útil que resume reuniones de trabajo.\n<|im_end|>\n<|im_start|>user\nResume la siguiente transcripción de una reunión, indicando los puntos clave de cada interlocutor:\n\n${conversation}\n<|im_end|>\n<|im_start|>assistant\n`;
-            
-            const results = await summarizer(prompt, {
+            const results = await summarizer(data.text, {
                 max_new_tokens: 150,
-                temperature: 0.3,
-                repetition_penalty: 1.2,
+                min_new_tokens: 30,
             });
             
-            // Extraer respuesta del LLM (quitando el prompt inicial)
-            let generatedText = results[0].generated_text;
-            generatedText = generatedText.split('<|im_start|>assistant\n')[1] || generatedText;
+            let generatedText = results[0].summary_text;
             
             sendStatus('summary_complete', { text: generatedText });
         } catch (err) {
