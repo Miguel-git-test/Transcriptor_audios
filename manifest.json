@@ -1,26 +1,23 @@
 {
-  "name": "Transcriptor Offline",
-  "short_name": "Transcriptor",
+  "name": "Notas",
+  "short_name": "Notas",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
-  "description": "Herramienta de transcripción y resumen offline de alto rendimiento",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "description": "Aplicación de notas sencillas",
   "icons": [
-    {
-      "src": "icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
-    },
     {
       "src": "icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }

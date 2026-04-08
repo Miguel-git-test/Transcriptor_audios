@@ -1,12 +1,14 @@
-const CACHE_NAME = 'transcriptor-v5-final';
+const CACHE_NAME = 'notas-v1';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './css/style.css',
   './js/app.js',
   './js/worker.js',
+  './js/db.js',
   './manifest.json',
-  './icon.svg'
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 // Instalar el Service Worker y almacenar en caché los archivos estáticos
