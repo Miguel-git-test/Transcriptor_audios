@@ -253,6 +253,19 @@ fakeLockScreen.addEventListener('dblclick', () => {
   fakeLockScreen.style.display = 'none';
 });
 
+// Ayuda Permanente
+const mainHelpBtn = document.getElementById('main-help-btn');
+const helpModal = document.getElementById('help-modal');
+const closeHelpBtn = document.getElementById('close-help');
+
+mainHelpBtn.addEventListener('click', () => {
+  helpModal.style.display = 'flex';
+});
+
+closeHelpBtn.addEventListener('click', () => {
+  helpModal.style.display = 'none';
+});
+
 // Exportar PDF
 exportPdfBtn.addEventListener('click', async () => {
   const { session, chunks } = await getSessionContent(currentSessionId);

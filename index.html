@@ -21,6 +21,7 @@
         <div class="search-bar">
           <div class="menu-icon">☰</div>
           <input type="text" placeholder="Buscar en tus notas">
+          <button id="main-help-btn" class="icon-btn" title="Ayuda" style="font-size: 1.1rem">❓</button>
           <div class="profile-icon">M</div>
         </div>
       </header>
@@ -85,6 +86,23 @@
       <div class="chat-input-area">
         <input type="text" id="chat-input" placeholder="Pregunta sobre la reunión...">
         <button id="send-chat-btn">➔</button>
+      </div>
+    <!-- Panel de Ayuda (Permanente) -->
+    <div id="help-modal" class="modal-overlay" style="display: none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Guía de Uso Rápida</h3>
+          <button id="close-help" class="icon-btn">×</button>
+        </div>
+        <div class="modal-body">
+          <ul>
+            <li><strong>🎙️ Grabar:</strong> Pulsa el botón <strong>+</strong> y luego el <strong>Micro</strong> abajo.</li>
+            <li><strong>🕶️ Sigilo:</strong> Activa el icono de las gafas para pantalla negra. <strong>Doble clic</strong> para salir.</li>
+            <li><strong>📌 Interés:</strong> Pulsa el Pin para marcar partes importantes.</li>
+            <li><strong>💬 Chat:</strong> Pregunta dudas a la IA sobre la grabación.</li>
+            <li><strong>⋮ Exportar:</strong> Guarda la transcripción en PDF desde el menú.</li>
+          </ul>
+        </div>
       </div>
     </div>
   </div>
