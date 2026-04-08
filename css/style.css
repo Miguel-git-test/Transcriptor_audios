@@ -28,8 +28,10 @@ body.keep-theme {
   font-family: 'Roboto', 'Inter', sans-serif;
   background-color: var(--keep-bg);
   color: var(--keep-text);
-  overflow-x: hidden;
+  overflow: hidden; /* Evitar scroll global */
   height: 100vh;
+  width: 100vw;
+  position: fixed; /* Evitar rebote en móvil */
 }
 
 .app-wrapper {

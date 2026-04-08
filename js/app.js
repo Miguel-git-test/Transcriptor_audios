@@ -117,7 +117,7 @@ function initWorker() {
         };
         await saveChunk(chunkData);
         addChunkToUI(chunkData);
-        if (isRecording) editorStatus.textContent = 'Grabando...';
+        if (isRecording) editorStatus.textContent = 'Autoguardado';
         break;
       case 'chat_response':
         addChatMessage('ia', data.text);
@@ -169,7 +169,7 @@ async function startRecording() {
   isRecording = true;
   recordingDot.classList.add('recording');
   recordActionBtn.textContent = '📑';
-  editorStatus.textContent = 'Grabando...';
+  editorStatus.textContent = 'Editando...';
 }
 
 function stopRecording() {
@@ -178,7 +178,7 @@ function stopRecording() {
   isRecording = false;
   recordingDot.classList.remove('recording');
   recordActionBtn.textContent = '📋';
-  editorStatus.textContent = 'Sesión guardada';
+  editorStatus.textContent = 'Guardado';
 }
 
 recordActionBtn.addEventListener('click', () => {
