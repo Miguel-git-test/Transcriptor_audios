@@ -1,173 +1,279 @@
 // js/app.js
+import { db, saveSession, saveChunk, saveAudio, getSessions, getSessionContent } from './db.js';
 
-const statusText = document.getElementById('system-status');
-const progressBar = document.getElementById('progress-bar');
-const progressContainer = document.getElementById('progress-container');
-const recordBtn = document.getElementById('record-btn');
-const summarizeBtn = document.getElementById('summarize-btn');
-const transcriptionContainer = document.getElementById('transcription-container');
-const summaryPanel = document.getElementById('summary-panel');
-const summaryContent = document.getElementById('summary-content');
+// UI Refs
+const homeScreen = document.getElementById('home-screen');
+const noteEditor = document.getElementById('note-editor');
+const notesGrid = document.getElementById('notes-grid');
+const newNoteFab = document.getElementById('new-note-fab');
+const backBtn = document.getElementById('back-btn');
+const recordActionBtn = document.getElementById('record-action-btn');
+const noteTitleInput = document.getElementById('note-title');
+const noteTextArea = document.getElementById('note-text');
+const editorStatus = document.getElementById('editor-status');
+const recordingDot = document.getElementById('recording-dot');
+const pinBtn = document.getElementById('pin-btn');
+const chatToggleBtn = document.getElementById('chat-toggle-btn');
+const chatPanel = document.getElementById('chat-panel');
+const closeChatBtn = document.getElementById('close-chat');
+const modelSelect = document.getElementById('model-select');
+const fakeLockBtn = document.getElementById('fake-lock-btn');
+const fakeLockScreen = document.getElementById('fake-lock-screen');
+const exportPdfBtn = document.getElementById('export-pdf-btn');
 
 let worker = null;
 let mediaRecorder = null;
-let audioChunks = [];
+let currentSessionId = null;
 let isRecording = false;
 let audioContext = null;
-let fullTranscriptionText = ""; 
+let stream = null;
+let lastChunkIndex = 0;
 
-function initAudioContext() {
-  if (!audioContext) {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+// Init
+window.addEventListener('DOMContentLoaded', async () => {
+  await renderNotesGrid();
+  initWorker();
+});
+
+// UI Navigation
+newNoteFab.addEventListener('click', () => {
+  openEditor(null);
+});
+
+backBtn.addEventListener('click', () => {
+  if (isRecording) stopRecording();
+  homeScreen.style.display = 'flex';
+  noteEditor.style.display = 'none';
+  renderNotesGrid();
+});
+
+async function openEditor(sessionId) {
+  homeScreen.style.display = 'none';
+  noteEditor.style.display = 'flex';
+  
+  if (sessionId) {
+    currentSessionId = sessionId;
+    const { session, chunks } = await getSessionContent(sessionId);
+    noteTitleInput.value = session.title;
+    noteTextArea.innerHTML = "";
+    chunks.forEach(c => addChunkToUI(c));
+    modelSelect.value = session.modelTier;
+  } else {
+    currentSessionId = null;
+    noteTitleInput.value = "Nueva Nota";
+    noteTextArea.innerHTML = "";
+    modelSelect.value = "medium";
   }
 }
 
-// Iniciar Web Worker con Buster v3.3 para forzar actualización
-function initWorker() {
-  worker = new Worker('js/worker.js?v=3.3', { type: 'module' });
+async function renderNotesGrid() {
+  const sessions = await getSessions();
+  notesGrid.innerHTML = "";
   
-  worker.onmessage = (event) => {
+  if (sessions.length === 0) {
+    notesGrid.innerHTML = '<div class="note-skeleton">No hay notas todavía.</div>';
+    return;
+  }
+  
+  sessions.forEach(s => {
+    const card = document.createElement('div');
+    card.className = 'note-card';
+    card.innerHTML = `
+      <h3>${s.title}</h3>
+      <p id="preview-${s.id}">Cargando contenido...</p>
+    `;
+    card.onclick = () => openEditor(s.id);
+    notesGrid.appendChild(card);
+    
+    getSessionContent(s.id).then(({chunks}) => {
+      const text = chunks.map(c => c.text).join(' ');
+      document.getElementById(`preview-${s.id}`).textContent = text || "Sin contenido";
+    });
+  });
+}
+
+function initWorker() {
+  worker = new Worker('js/worker.js?v=4.1', { type: 'module' });
+  
+  worker.onmessage = async (event) => {
     const data = event.data;
     
     switch (data.status) {
       case 'init':
-        statusText.textContent = `Cargando IA: ${data.name}...`;
-        progressContainer.style.display = 'block';
-        break;
-      case 'progress':
-        const percent = Math.round((data.loaded / data.total) * 100);
-        progressBar.style.width = `${percent}%`;
-        statusText.textContent = `Descargando IA local (${percent}%)... Esto solo pasa la primera vez.`;
+        editorStatus.textContent = `${data.name}...`;
         break;
       case 'ready':
-        progressContainer.style.display = 'none';
-        statusText.textContent = 'IA Lista. Ya puedes grabar.';
-        recordBtn.disabled = false;
-        break;
-      case 'transcribing':
-        statusText.textContent = 'Procesando audio (esto puede tardar)...';
-        if (!statusText.innerHTML.includes('spinner')) {
-          statusText.innerHTML = '<span class="spinner"></span> Procesando audio (offline)...';
-        }
+        editorStatus.textContent = 'IA Lista';
         break;
       case 'chunk':
-        addTranscriptionChunk(data.chunk);
-        fullTranscriptionText += `\n[${data.chunk.speaker}] ${data.chunk.text}`;
+        const chunkData = {
+          sessionId: currentSessionId,
+          speaker: data.chunk.speaker,
+          text: data.chunk.text,
+          start: data.chunk.timestamp[0],
+          end: data.chunk.timestamp[1],
+          isHighlight: false
+        };
+        await saveChunk(chunkData);
+        addChunkToUI(chunkData);
         break;
-      case 'complete':
-        statusText.textContent = 'Procesamiento completado.';
-        summarizeBtn.disabled = false; 
-        break;
-      case 'summary_progress':
-        summaryPanel.style.display = 'block';
-        summaryContent.innerHTML = '<span class="spinner"></span> ' + data.text;
-        break;
-      case 'summary_complete':
-        statusText.textContent = 'Resumen completado.';
-        summaryContent.innerHTML = data.text.replace(/\n/g, '<br>');
+      case 'chat_response':
+        addChatMessage('ia', data.text);
+        editorStatus.textContent = 'IA ha respondido.';
         break;
       case 'error':
-        statusText.textContent = `Error: ${data.message}`;
-        recordBtn.disabled = false;
-        console.error(data.message);
+        editorStatus.textContent = `Error AI: ${data.message}`;
         break;
     }
   };
 }
 
-function addTranscriptionChunk(chunk) {
-  const emptyState = document.querySelector('.empty-state');
-  if (emptyState) emptyState.remove();
-
-  const msgDiv = document.createElement('div');
-  const sID = chunk.speaker; 
-  let sClass = "A";
-  if (sID === "SPEAKER_00") sClass = "A";
-  if (sID === "SPEAKER_01") sClass = "B";
-  if (sID === "SPEAKER_02") sClass = "C";
-
-  msgDiv.className = `message speaker-${sClass}`;
-  
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-  
-  const timeStr = `${formatTime(chunk.timestamp[0])} - ${formatTime(chunk.timestamp[1])}`;
-
-  msgDiv.innerHTML = `
-    <span class="speaker-label">Interlocutor ${sClass}</span>
-    <p class="message-text">${chunk.text}</p>
-    <span class="message-time">${timeStr}</span>
-  `;
-  
-  transcriptionContainer.appendChild(msgDiv);
-  window.scrollTo(0, document.body.scrollHeight);
+function addChunkToUI(chunk) {
+  const p = document.createElement('p');
+  p.style.marginBottom = '0.5rem';
+  p.innerHTML = `<strong style="color: #555">[${chunk.speaker}]</strong> ${chunk.text}`;
+  noteTextArea.appendChild(p);
+  noteTextArea.scrollTop = noteTextArea.scrollHeight;
 }
 
-async function decodeAudioFile(blob) {
-  initAudioContext();
-  const arrayBuffer = await blob.arrayBuffer();
-  const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-  
-  let offlineCtx = new OfflineAudioContext(1, audioBuffer.duration * 16000, 16000);
-  let source = offlineCtx.createBufferSource();
-  source.buffer = audioBuffer;
-  source.connect(offlineCtx.destination);
-  source.start();
-  
-  let renderedBuffer = await offlineCtx.startRendering();
-  return renderedBuffer.getChannelData(0); 
-}
-
-async function toggleRecording() {
-  if (!isRecording) {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream);
-      audioChunks = [];
-      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-      mediaRecorder.onstop = async () => {
-        statusText.innerHTML = '<span class="spinner"></span> Preparando audio...';
-        recordBtn.disabled = true;
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        try {
-          const audioData = await decodeAudioFile(audioBlob);
-          worker.postMessage({ type: 'transcribe', audio: audioData });
-        } catch (err) {
-          statusText.textContent = "Error al procesar audio.";
-          recordBtn.disabled = false;
-        }
-      };
-      mediaRecorder.start();
-      isRecording = true;
-      recordBtn.classList.add('recording');
-      recordBtn.querySelector('#record-text').textContent = 'Detener';
-      statusText.textContent = 'Grabando reunión...';
-    } catch (err) {
-      statusText.textContent = 'Error: Sin acceso al micrófono.';
-    }
-  } else {
-    mediaRecorder.stop();
-    mediaRecorder.stream.getTracks().forEach(track => track.stop());
-    isRecording = false;
-    recordBtn.classList.remove('recording');
-    recordBtn.querySelector('#record-text').textContent = 'Grabar';
+async function startRecording() {
+  if (!currentSessionId) {
+    currentSessionId = await saveSession({ 
+      title: noteTitleInput.value,
+      modelTier: modelSelect.value 
+    });
   }
+
+  stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  mediaRecorder = new MediaRecorder(stream);
+  
+  mediaRecorder.ondataavailable = async (e) => {
+    if (e.data.size > 0) {
+      const audioBlob = new Blob([e.data], { type: 'audio/webm' });
+      const audioData = await decodeAudio(audioBlob);
+      worker.postMessage({ 
+        type: 'transcribe', 
+        audio: audioData,
+        modelTier: modelSelect.value 
+      });
+      // Guardar audio backup
+      await saveAudio(currentSessionId, audioBlob);
+    }
+  };
+
+  mediaRecorder.start(10000); 
+  isRecording = true;
+  recordingDot.classList.add('recording');
+  recordActionBtn.textContent = '⏹️';
+  editorStatus.textContent = 'Grabando...';
 }
 
-recordBtn.addEventListener('click', toggleRecording);
-summarizeBtn.addEventListener('click', () => {
-  if (fullTranscriptionText.trim().length === 0) return;
-  summarizeBtn.disabled = true;
-  worker.postMessage({ type: 'summarize', text: fullTranscriptionText });
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  isRecording = false;
+  recordingDot.classList.remove('recording');
+  recordActionBtn.textContent = '🎙️';
+  editorStatus.textContent = 'Sesión guardada';
+}
+
+recordActionBtn.addEventListener('click', () => {
+  if (isRecording) stopRecording();
+  else startRecording();
 });
 
-window.addEventListener('DOMContentLoaded', () => {
-  if (!window.Worker) {
-    statusText.textContent = "Navegador no soportado.";
-    return;
+async function decodeAudio(blob) {
+  if (!audioContext) audioContext = new AudioContext({ sampleRate: 16000 });
+  const arrayBuffer = await blob.arrayBuffer();
+  const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+  return audioBuffer.getChannelData(0);
+}
+
+// Marcado de Interés (PIN)
+pinBtn.addEventListener('click', () => {
+  pinBtn.style.transform = 'scale(1.5)';
+  pinBtn.style.color = '#fbbc04';
+  setTimeout(() => {
+    pinBtn.style.transform = 'scale(1)';
+    pinBtn.style.color = '';
+  }, 300);
+  
+  if (isRecording) {
+    editorStatus.textContent = "Marcado Punto de Interés ⭐";
+    setTimeout(() => editorStatus.textContent = "Grabando...", 2000);
   }
-  initWorker();
+});
+
+// Chat IA
+const chatInput = document.getElementById('chat-input');
+const sendChatBtn = document.getElementById('send-chat-btn');
+const chatMessages = document.getElementById('chat-messages');
+
+chatToggleBtn.addEventListener('click', () => {
+  chatPanel.style.transform = (chatPanel.style.transform === 'translateX(0%)') ? 'translateX(100%)' : 'translateX(0%)';
+});
+
+closeChatBtn.addEventListener('click', () => {
+  chatPanel.style.transform = 'translateX(100%)';
+});
+
+sendChatBtn.addEventListener('click', async () => {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  
+  addChatMessage('user', text);
+  chatInput.value = "";
+  
+  const { chunks } = await getSessionContent(currentSessionId);
+  const context = chunks.map(c => c.text).join(' ');
+  
+  worker.postMessage({
+    type: 'chat',
+    query: text,
+    context: context,
+    modelTier: modelSelect.value
+  });
+});
+
+function addChatMessage(role, text) {
+  const div = document.createElement('div');
+  div.className = `chat-msg ${role}`;
+  div.textContent = text;
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Pantalla Negra (Fake Lock)
+fakeLockBtn.addEventListener('click', () => {
+  fakeLockScreen.style.display = 'block';
+});
+
+fakeLockScreen.addEventListener('dblclick', () => {
+  fakeLockScreen.style.display = 'none';
+});
+
+// Exportar PDF
+exportPdfBtn.addEventListener('click', async () => {
+  const { session, chunks } = await getSessionContent(currentSessionId);
+  if (!chunks.length) return alert("Sin contenido para exportar.");
+  
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  
+  doc.setFontSize(20);
+  doc.text(session.title, 20, 20);
+  doc.setFontSize(10);
+  doc.text(`Fecha: ${session.date.toLocaleString()}`, 20, 30);
+  
+  let y = 40;
+  doc.setFontSize(12);
+  chunks.forEach(c => {
+    if (y > 270) { doc.addPage(); y = 20; }
+    const text = `[${c.speaker}] ${c.text}`;
+    const splitText = doc.splitTextToSize(text, 170);
+    doc.text(splitText, 20, y);
+    y += (splitText.length * 7);
+  });
+  
+  doc.save(`${session.title}.pdf`);
 });
