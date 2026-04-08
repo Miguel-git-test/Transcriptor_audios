@@ -206,6 +206,15 @@ body.keep-theme {
   margin-right: 4px;
 }
 
+.version-tag {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  font-size: 0.6rem;
+  color: #ddd; /* Muy sutil */
+  pointer-events: none;
+}
+
 /* Footer del Editor */
 .editor-footer {
   display: flex;
