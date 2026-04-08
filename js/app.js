@@ -1,5 +1,5 @@
 // js/app.js
-import { db, saveSession, saveChunk, saveAudio, getSessions, getSessionContent } from './db.js';
+import { db, saveSession, saveChunk, saveAudio, getSessions, getSessionContent, seedHelpNote } from './db.js';
 
 // UI Refs
 const homeScreen = document.getElementById('home-screen');
@@ -31,6 +31,7 @@ let lastChunkIndex = 0;
 
 // Init
 window.addEventListener('DOMContentLoaded', async () => {
+  await seedHelpNote();
   await renderNotesGrid();
   initWorker();
 });
