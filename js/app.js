@@ -168,7 +168,7 @@ async function startRecording() {
   mediaRecorder.start(10000); 
   isRecording = true;
   recordingDot.classList.add('recording');
-  recordActionBtn.textContent = '⏹️';
+  recordActionBtn.textContent = '📑';
   editorStatus.textContent = 'Grabando...';
 }
 
@@ -177,7 +177,7 @@ function stopRecording() {
   if (stream) stream.getTracks().forEach(t => t.stop());
   isRecording = false;
   recordingDot.classList.remove('recording');
-  recordActionBtn.textContent = '🎙️';
+  recordActionBtn.textContent = '📋';
   editorStatus.textContent = 'Sesión guardada';
 }
 
