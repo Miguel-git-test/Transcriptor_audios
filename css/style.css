@@ -188,11 +188,22 @@ body.keep-theme {
 
 .note-text-area {
   width: 100%;
-  min-height: 100px;
+  padding-bottom: 2rem;
   font-size: 1rem;
   color: var(--keep-text);
   outline: none;
   white-space: pre-wrap;
+}
+
+.stealth-select {
+  border: none;
+  background: #f1f3f4;
+  font-size: 0.75rem;
+  color: var(--keep-muted);
+  border-radius: 4px;
+  padding: 2px 4px;
+  outline: none;
+  margin-right: 4px;
 }
 
 /* Footer del Editor */

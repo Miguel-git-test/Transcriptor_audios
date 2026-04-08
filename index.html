@@ -39,8 +39,13 @@
       <header class="editor-header">
         <button id="back-btn" class="icon-btn">←</button>
         <div class="editor-actions">
-          <button id="pin-btn" class="icon-btn" title="Fijar nota (Momento de Interés)">📍</button>
-          <button id="chat-toggle-btn" class="icon-btn" title="Comentarios (Chat IA)">💬</button>
+          <select id="model-select" class="stealth-select">
+            <option value="basic">Básico</option>
+            <option value="medium" selected>Medio</option>
+            <option value="heavy">Heavy</option>
+          </select>
+          <button id="pin-btn" class="icon-btn" title="Fijar">📍</button>
+          <button id="chat-toggle-btn" class="icon-btn" title="Chat">💬</button>
           <button id="export-pdf-btn" class="icon-btn">⋮</button>
         </div>
       </header>
@@ -55,17 +60,10 @@
       <footer class="editor-footer">
         <div class="status-indicator">
           <span id="recording-dot" class="dot"></span>
-          <span id="editor-status">Offline</span>
-        </div>
-        <div class="model-tier-selector">
-          <select id="model-select">
-            <option value="basic">Básico</option>
-            <option value="medium" selected>Medio</option>
-            <option value="heavy">Heavy</option>
-          </select>
+          <span id="editor-status" style="font-size: 0.75rem; color: #888;"></span>
         </div>
         <div class="footer-btns">
-            <button id="fake-lock-btn" class="icon-btn" title="Modo Sigilo">🕶️</button>
+            <button id="fake-lock-btn" class="icon-btn" title="Sigilo">🕶️</button>
             <button id="record-action-btn" class="mic-btn">📋</button>
         </div>
       </footer>
