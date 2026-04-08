@@ -20,7 +20,7 @@
         <h1>PrivateMeet</h1>
         <div class="header-badges">
           <span class="badge">100% Offline</span>
-          <span class="badge-version">v3.1</span>
+          <span id="version-badge" class="badge-version" style="background: #ef4444; color: white;">v3.3</span>
         </div>
       </div>
     </header>
@@ -61,16 +61,12 @@
   <!-- Cargar Modules -->
   <script type="module" src="js/app.js"></script>
   
-  <!-- Register Service Worker for PWA -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./service-worker.js')
-          .then(registration => {
-            console.log('ServiceWorker registrado con éxito con el scope: ', registration.scope);
-          }, err => {
-            console.log('Fallo al registrar el ServiceWorker: ', err);
-          });
+          .then(reg => console.log('SW ok'))
+          .catch(err => console.log('SW error', err));
       });
     }
   </script>

@@ -1,6 +1,5 @@
 // js/app.js
 
-// Referencias a UI
 const statusText = document.getElementById('system-status');
 const progressBar = document.getElementById('progress-bar');
 const progressContainer = document.getElementById('progress-container');
@@ -15,18 +14,17 @@ let mediaRecorder = null;
 let audioChunks = [];
 let isRecording = false;
 let audioContext = null;
-let fullTranscriptionText = ""; // Guardamos el texto final para el resumen
+let fullTranscriptionText = ""; 
 
-// Inicializar AudioContext (requerido para remuestrear a 16kHz para Whisper)
 function initAudioContext() {
   if (!audioContext) {
     audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
   }
 }
 
-// Iniciar Web Worker con Buster para forzar actualización
+// Iniciar Web Worker con Buster v3.3 para forzar actualización
 function initWorker() {
-  worker = new Worker('js/worker.js?v=3.2', { type: 'module' });
+  worker = new Worker('js/worker.js?v=3.3', { type: 'module' });
   
   worker.onmessage = (event) => {
     const data = event.data;
@@ -43,24 +41,22 @@ function initWorker() {
         break;
       case 'ready':
         progressContainer.style.display = 'none';
-        statusText.textContent = 'IA Lista. Sistemas operativos.';
+        statusText.textContent = 'IA Lista. Ya puedes grabar.';
         recordBtn.disabled = false;
         break;
       case 'transcribing':
-        statusText.textContent = 'Transcribiendo audio y detectando voces... (Puede tardar)';
-        // Añadir spinner si no hay
+        statusText.textContent = 'Procesando audio (esto puede tardar)...';
         if (!statusText.innerHTML.includes('spinner')) {
           statusText.innerHTML = '<span class="spinner"></span> Procesando audio (offline)...';
         }
         break;
       case 'chunk':
-        // Recibimos un fragmento transcrito con su locutor identificado
         addTranscriptionChunk(data.chunk);
         fullTranscriptionText += `\n[${data.chunk.speaker}] ${data.chunk.text}`;
         break;
       case 'complete':
         statusText.textContent = 'Procesamiento completado.';
-        summarizeBtn.disabled = false; // Permitir resumir
+        summarizeBtn.disabled = false; 
         break;
       case 'summary_progress':
         summaryPanel.style.display = 'block';
@@ -79,20 +75,11 @@ function initWorker() {
   };
 }
 
-// Función para actualizar la UI con los chunks
 function addTranscriptionChunk(chunk) {
-  // Limpiar estado vacío si existe
   const emptyState = document.querySelector('.empty-state');
   if (emptyState) emptyState.remove();
 
   const msgDiv = document.createElement('div');
-  // Asignar clase de locutor (Speaker A, B, C...)
-  // chunk.speaker vendrá como "A", "B", o "C" (ej. "Speaker A" -> sacamos la última letra o usamos la cadena exacta)
-  let speakerCode = "A";
-  if (chunk.speaker.includes('1')) speakerCode = "A";
-  else if (chunk.speaker.includes('2')) speakerCode = "B";
-  else if (chunk.speaker.includes('3')) speakerCode = "C";
-  // O simplemente mapear el ID del speaker a una letra
   const sID = chunk.speaker; 
   let sClass = "A";
   if (sID === "SPEAKER_00") sClass = "A";
@@ -101,7 +88,6 @@ function addTranscriptionChunk(chunk) {
 
   msgDiv.className = `message speaker-${sClass}`;
   
-  // Format time
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -117,11 +103,9 @@ function addTranscriptionChunk(chunk) {
   `;
   
   transcriptionContainer.appendChild(msgDiv);
-  // Auto scroll
   window.scrollTo(0, document.body.scrollHeight);
 }
 
-// Convertir Blob de Audio a Float32Array (16kHz, mono) que requiere Whisper
 async function decodeAudioFile(blob) {
   initAudioContext();
   const arrayBuffer = await blob.arrayBuffer();
@@ -134,51 +118,37 @@ async function decodeAudioFile(blob) {
   source.start();
   
   let renderedBuffer = await offlineCtx.startRendering();
-  return renderedBuffer.getChannelData(0); // Float32Array
+  return renderedBuffer.getChannelData(0); 
 }
 
-// Controlar Grabación
 async function toggleRecording() {
   if (!isRecording) {
-    // Iniciar Grabación
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorder = new MediaRecorder(stream);
       audioChunks = [];
-      
-      mediaRecorder.ondataavailable = e => {
-        if (e.data.size > 0) audioChunks.push(e.data);
-      };
-      
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
       mediaRecorder.onstop = async () => {
         statusText.innerHTML = '<span class="spinner"></span> Preparando audio...';
         recordBtn.disabled = true;
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        
         try {
           const audioData = await decodeAudioFile(audioBlob);
-          // Enviar a worker
           worker.postMessage({ type: 'transcribe', audio: audioData });
         } catch (err) {
           statusText.textContent = "Error al procesar audio.";
-          console.error(err);
           recordBtn.disabled = false;
         }
       };
-      
       mediaRecorder.start();
       isRecording = true;
-      
       recordBtn.classList.add('recording');
       recordBtn.querySelector('#record-text').textContent = 'Detener';
       statusText.textContent = 'Grabando reunión...';
-      
     } catch (err) {
-      statusText.textContent = 'Error: No hay acceso al micrófono.';
-      console.error(err);
+      statusText.textContent = 'Error: Sin acceso al micrófono.';
     }
   } else {
-    // Detener grabación
     mediaRecorder.stop();
     mediaRecorder.stream.getTracks().forEach(track => track.stop());
     isRecording = false;
@@ -187,19 +157,16 @@ async function toggleRecording() {
   }
 }
 
-// Listeners
 recordBtn.addEventListener('click', toggleRecording);
-
 summarizeBtn.addEventListener('click', () => {
   if (fullTranscriptionText.trim().length === 0) return;
   summarizeBtn.disabled = true;
   worker.postMessage({ type: 'summarize', text: fullTranscriptionText });
 });
 
-// Arrancar App
 window.addEventListener('DOMContentLoaded', () => {
   if (!window.Worker) {
-    statusText.textContent = "Tu navegador no soporta Web Workers.";
+    statusText.textContent = "Navegador no soportado.";
     return;
   }
   initWorker();

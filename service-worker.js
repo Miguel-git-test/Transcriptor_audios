@@ -1,4 +1,4 @@
-const CACHE_NAME = 'transcriptor-v4';
+const CACHE_NAME = 'transcriptor-v5-final';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
